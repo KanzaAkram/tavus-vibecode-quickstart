@@ -11,6 +11,8 @@ import {
   Conversation,
   FinalScreen,
   Settings,
+  Dashboard,
+  WellnessAssessment,
 } from "./screens";
 
 function App() {
@@ -28,6 +30,10 @@ function App() {
         return <Intro />;
       case "settings":
         return <Settings />;
+      case "dashboard":
+        return <Dashboard />;
+      case "wellnessAssessment":
+        return <WellnessAssessment />;
       case "instructions":
         return <Instructions />;
       case "conversation":
@@ -40,7 +46,7 @@ function App() {
   };
 
   return (
-    <main className="flex h-svh flex-col items-center justify-between gap-3 p-5 sm:gap-4 lg:p-8 bg-black">
+    <main className="flex h-svh flex-col items-center justify-between gap-3 p-5 sm:gap-4 lg:p-8 bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900">
       {currentScreen !== "introLoading" && <Header />}
       {renderScreen()}
       {currentScreen !== "introLoading" && <Footer />}

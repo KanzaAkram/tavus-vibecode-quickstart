@@ -4,8 +4,8 @@ import {
 } from "@/components/DialogWrapper";
 import { cn } from "@/utils";
 import { useAtom } from "jotai";
-import { getDefaultStore } from "jotai";
 import { settingsAtom, settingsSavedAtom } from "@/store/settings";
+import { employeeProfileAtom, EmployeeProfile } from "@/store/wellness";
 import { screenAtom } from "@/store/screens";
 import { X } from "lucide-react";
 import * as React from "react";
@@ -55,15 +55,15 @@ const Input = React.forwardRef<
 });
 Input.displayName = "Input";
 
-// Textarea Component
-const Textarea = React.forwardRef<
-  HTMLTextAreaElement,
-  React.TextareaHTMLAttributes<HTMLTextAreaElement>
+// Select Component
+const Select = React.forwardRef<
+  HTMLSelectElement,
+  React.SelectHTMLAttributes<HTMLSelectElement>
 >(({ className, ...props }, ref) => {
   return (
-    <textarea
+    <select
       className={cn(
-        "flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+        "flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
         className
       )}
       ref={ref}
@@ -71,27 +71,7 @@ const Textarea = React.forwardRef<
     />
   );
 });
-Textarea.displayName = "Textarea";
-
-// Switch Component
-const Switch = React.forwardRef<
-  HTMLInputElement,
-  React.InputHTMLAttributes<HTMLInputElement>
->(({ className, ...props }, ref) => {
-  return (
-    <input
-      type="checkbox"
-      role="switch"
-      className={cn(
-        "peer h-6 w-11 rounded-full bg-input transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-primary",
-        className
-      )}
-      ref={ref}
-      {...props}
-    />
-  );
-});
-Switch.displayName = "Switch";
+Select.displayName = "Select";
 
 // Label Component
 const Label = React.forwardRef<
@@ -111,79 +91,83 @@ const Label = React.forwardRef<
 });
 Label.displayName = "Label";
 
-// Select Component
-const Select = React.forwardRef<
-  HTMLSelectElement,
-  React.SelectHTMLAttributes<HTMLSelectElement>
->(({ className, ...props }, ref) => {
-  return (
-    <select
-      className={cn(
-        "flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
-        className
-      )}
-      ref={ref}
-      {...props}
-    />
-  );
-});
-Select.displayName = "Select";
-
 export const Settings: React.FC = () => {
   const [settings, setSettings] = useAtom(settingsAtom);
+  const [employeeProfile, setEmployeeProfile] = useAtom(employeeProfileAtom);
   const [, setScreenState] = useAtom(screenAtom);
   const [token, setToken] = useAtom(apiTokenAtom);
   const [, setSettingsSaved] = useAtom(settingsSavedAtom);
 
-  const languages = [
-    { label: "English", value: "en" },
-    { label: "Spanish", value: "es" },
-    { label: "French", value: "fr" },
-    { label: "German", value: "de" },
-    { label: "Italian", value: "it" },
-    { label: "Portuguese", value: "pt" },
-  ];
+  // Local state for form
+  const [formData, setFormData] = React.useState({
+    name: employeeProfile?.name || "",
+    department: employeeProfile?.department || "",
+    role: employeeProfile?.role || "",
+    manager: employeeProfile?.manager || "",
+    persona: settings.persona || "",
+    greeting: settings.greeting || "",
+    context: settings.context || "",
+  });
 
-  const interruptSensitivities = [
-    { label: "Low", value: "low" },
-    { label: "Medium", value: "medium" },
-    { label: "High", value: "high" },
+  const departments = [
+    "Engineering",
+    "Marketing",
+    "Sales",
+    "Human Resources",
+    "Finance",
+    "Operations",
+    "Customer Support",
+    "Product Management",
+    "Design",
+    "Legal"
   ];
 
   const handleClose = () => {
-    setScreenState({ 
-      currentScreen: token ? "instructions" : "intro" 
-    });
+    if (employeeProfile) {
+      setScreenState({ currentScreen: "dashboard" });
+    } else {
+      setScreenState({ currentScreen: "intro" });
+    }
   };
 
   const handleSave = async () => {
-    console.log('Current settings before save:', settings);
-    
-    // Create a new settings object to ensure we have a fresh reference
+    // Update settings
     const updatedSettings = {
       ...settings,
-      greeting: settings.greeting,  // explicitly set the greeting
+      persona: formData.persona,
+      greeting: formData.greeting,
+      context: formData.context,
     };
     
-    // Save to localStorage
+    // Create or update employee profile
+    const profileData: EmployeeProfile = {
+      id: employeeProfile?.id || `emp_${Date.now()}`,
+      name: formData.name,
+      department: formData.department,
+      role: formData.role,
+      manager: formData.manager,
+      joinDate: employeeProfile?.joinDate || new Date(),
+      wellnessMetrics: employeeProfile?.wellnessMetrics || {
+        stressLevel: 5,
+        energyLevel: 5,
+        workloadSatisfaction: 5,
+        workLifeBalance: 5,
+        burnoutRisk: 'medium',
+        lastAssessment: null,
+        weeklyTrend: 'stable',
+      },
+    };
+
+    // Save to localStorage and atoms
     localStorage.setItem('tavus-settings', JSON.stringify(updatedSettings));
+    localStorage.setItem('employee-profile', JSON.stringify(profileData));
     
-    // Update the store with the new settings object
-    const store = getDefaultStore();
-    store.set(settingsAtom, updatedSettings);
-    
-    // Wait a moment to ensure the store is updated
-    await new Promise(resolve => setTimeout(resolve, 100));
-    
-    // Check both localStorage and store
-    const storedSettings = localStorage.getItem('tavus-settings');
-    const storeSettings = store.get(settingsAtom);
-    
-    console.log('Settings in localStorage:', JSON.parse(storedSettings || '{}'));
-    console.log('Settings in store after save:', storeSettings);
-    
+    setSettings(updatedSettings);
+    setEmployeeProfile(profileData);
     setSettingsSaved(true);
-    handleClose();
+    
+    // Navigate to dashboard
+    setScreenState({ currentScreen: "dashboard" });
   };
 
   return (
@@ -200,130 +184,148 @@ export const Settings: React.FC = () => {
               <X className="size-6" />
             </Button>
             
-            <h2 className="text-2xl font-bold text-white">Settings</h2>
+            <h2 className="text-2xl font-bold text-white">
+              {employeeProfile ? 'Profile Settings' : 'Setup Your Profile'}
+            </h2>
           </div>
           
           <div className="h-[calc(100vh-500px)] overflow-y-auto pr-4 -mr-4">
             <div className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="name">Your Name</Label>
-                <Input
-                  id="name"
-                  value={settings.name}
-                  onChange={(e) => setSettings({ ...settings, name: e.target.value })}
-                  placeholder="Enter your name"
-                  className="bg-black/20 font-mono"
-                  style={{ fontFamily: "'Source Code Pro', monospace" }}
-                />
+              {/* Employee Information */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-white border-b border-gray-700 pb-2">
+                  Employee Information
+                </h3>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="name">Full Name *</Label>
+                  <Input
+                    id="name"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    placeholder="Enter your full name"
+                    className="bg-black/20 font-mono"
+                    style={{ fontFamily: "'Source Code Pro', monospace" }}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="department">Department *</Label>
+                  <Select
+                    id="department"
+                    value={formData.department}
+                    onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                    className="bg-black/20 font-mono"
+                    style={{ fontFamily: "'Source Code Pro', monospace" }}
+                    required
+                  >
+                    <option value="" className="bg-black text-white">Select Department</option>
+                    {departments.map((dept) => (
+                      <option 
+                        key={dept} 
+                        value={dept}
+                        className="bg-black text-white font-mono"
+                        style={{ fontFamily: "'Source Code Pro', monospace" }}
+                      >
+                        {dept}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="role">Job Role *</Label>
+                  <Input
+                    id="role"
+                    value={formData.role}
+                    onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                    placeholder="e.g., Senior Software Engineer"
+                    className="bg-black/20 font-mono"
+                    style={{ fontFamily: "'Source Code Pro', monospace" }}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="manager">Manager Name</Label>
+                  <Input
+                    id="manager"
+                    value={formData.manager}
+                    onChange={(e) => setFormData({ ...formData, manager: e.target.value })}
+                    placeholder="Enter your manager's name"
+                    className="bg-black/20 font-mono"
+                    style={{ fontFamily: "'Source Code Pro', monospace" }}
+                  />
+                </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="language">Language</Label>
-                <Select
-                  id="language"
-                  value={settings.language}
-                  onChange={(e) => setSettings({ ...settings, language: e.target.value })}
-                  className="bg-black/20 font-mono"
-                  style={{ fontFamily: "'Source Code Pro', monospace" }}
-                >
-                  {languages.map((lang) => (
-                    <option 
-                      key={lang.value} 
-                      value={lang.value}
-                      className="bg-black text-white font-mono"
-                      style={{ fontFamily: "'Source Code Pro', monospace" }}
-                    >
-                      {lang.label}
-                    </option>
-                  ))}
-                </Select>
+              {/* AI Configuration */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-white border-b border-gray-700 pb-2">
+                  AI Wellness Coach Configuration
+                </h3>
+
+                <div className="space-y-2">
+                  <Label htmlFor="persona">Custom Persona ID</Label>
+                  <Input
+                    id="persona"
+                    value={formData.persona}
+                    onChange={(e) => setFormData({ ...formData, persona: e.target.value })}
+                    placeholder="p2fbd605"
+                    className="bg-black/20 font-mono"
+                    style={{ fontFamily: "'Source Code Pro', monospace" }}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="greeting">Custom Greeting</Label>
+                  <Input
+                    id="greeting"
+                    value={formData.greeting}
+                    onChange={(e) => setFormData({ ...formData, greeting: e.target.value })}
+                    placeholder="Hi! I'm your wellness coach..."
+                    className="bg-black/20 font-mono"
+                    style={{ fontFamily: "'Source Code Pro', monospace" }}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="context">Wellness Context</Label>
+                  <textarea
+                    id="context"
+                    value={formData.context}
+                    onChange={(e) => setFormData({ ...formData, context: e.target.value })}
+                    placeholder="You are a corporate wellness coach focused on helping employees manage stress, prevent burnout, and improve productivity..."
+                    className="min-h-[100px] bg-black/20 font-mono w-full rounded-md border border-input px-3 py-2 text-sm"
+                    style={{ fontFamily: "'Source Code Pro', monospace" }}
+                  />
+                </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="interruptSensitivity">Interrupt Sensitivity</Label>
-                <Select
-                  id="interruptSensitivity"
-                  value={settings.interruptSensitivity}
-                  onChange={(e) => setSettings({ ...settings, interruptSensitivity: e.target.value })}
-                  className="bg-black/20 font-mono"
-                  style={{ fontFamily: "'Source Code Pro', monospace" }}
-                >
-                  {interruptSensitivities.map((sensitivity) => (
-                    <option 
-                      key={sensitivity.value} 
-                      value={sensitivity.value}
-                      className="bg-black text-white font-mono"
-                      style={{ fontFamily: "'Source Code Pro', monospace" }}
-                    >
-                      {sensitivity.label}
-                    </option>
-                  ))}
-                </Select>
-              </div>
+              {/* API Configuration */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-white border-b border-gray-700 pb-2">
+                  API Configuration
+                </h3>
 
-              <div className="space-y-2">
-                <Label htmlFor="greeting">Custom Greeting</Label>
-                <Input
-                  id="greeting"
-                  value={settings.greeting}
-                  onChange={(e) => setSettings({ ...settings, greeting: e.target.value })}
-                  placeholder="Enter custom greeting"
-                  className="bg-black/20 font-mono"
-                  style={{ fontFamily: "'Source Code Pro', monospace" }}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="context">Custom Context</Label>
-                <Textarea
-                  id="context"
-                  value={settings.context}
-                  onChange={(e) => setSettings({ ...settings, context: e.target.value })}
-                  placeholder="Paste or type custom context"
-                  className="min-h-[100px] bg-black/20 font-mono"
-                  style={{ fontFamily: "'Source Code Pro', monospace" }}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="persona">Set Custom Persona ID</Label>
-                <Input
-                  id="persona"
-                  value={settings.persona}
-                  onChange={(e) => setSettings({ ...settings, persona: e.target.value })}
-                  placeholder="p2fbd605"
-                  className="bg-black/20 font-mono"
-                  style={{ fontFamily: "'Source Code Pro', monospace" }}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="replica">Set Custom Replica ID</Label>
-                <Input
-                  id="replica"
-                  value={settings.replica}
-                  onChange={(e) => setSettings({ ...settings, replica: e.target.value })}
-                  placeholder="rfb51183fe"
-                  className="bg-black/20 font-mono"
-                  style={{ fontFamily: "'Source Code Pro', monospace" }}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="apiToken">API Token</Label>
-                <Input
-                  id="apiToken"
-                  type="password"
-                  value={token || ""}
-                  onChange={(e) => {
-                    const newToken = e.target.value;
-                    setToken(newToken);
-                    localStorage.setItem('tavus-token', newToken);
-                  }}
-                  placeholder="Enter Tavus API Key"
-                  className="bg-black/20 font-mono"
-                  style={{ fontFamily: "'Source Code Pro', monospace" }}
-                />
+                <div className="space-y-2">
+                  <Label htmlFor="apiToken">Tavus API Token *</Label>
+                  <Input
+                    id="apiToken"
+                    type="password"
+                    value={token || ""}
+                    onChange={(e) => {
+                      const newToken = e.target.value;
+                      setToken(newToken);
+                      localStorage.setItem('tavus-token', newToken);
+                    }}
+                    placeholder="Enter Tavus API Key"
+                    className="bg-black/20 font-mono"
+                    style={{ fontFamily: "'Source Code Pro', monospace" }}
+                    required
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -331,13 +333,14 @@ export const Settings: React.FC = () => {
           <div className="sticky bottom-0 mt-6 border-t border-gray-700 pt-6 pb-8">
             <button
               onClick={handleSave}
-              className="hover:shadow-footer-btn relative flex items-center justify-center gap-2 rounded-3xl border border-[rgba(255,255,255,0.3)] bg-[rgba(255,255,255,0.1)] px-4 py-3 text-sm font-bold text-white transition-all duration-200 hover:text-primary"
+              disabled={!formData.name || !formData.department || !formData.role || !token}
+              className="hover:shadow-footer-btn relative flex items-center justify-center gap-2 rounded-3xl border border-[rgba(255,255,255,0.3)] bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 px-6 py-3 text-sm font-bold text-white transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Save Changes
+              {employeeProfile ? 'Save Changes' : 'Create Profile'}
             </button>
           </div>
         </div>
       </AnimatedTextBlockWrapper>
     </DialogWrapper>
   );
-}; 
+};

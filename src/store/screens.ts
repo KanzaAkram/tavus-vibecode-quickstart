@@ -5,12 +5,12 @@ export type Screen =
   | "outage"
   | "outOfMinutes"
   | "intro"
+  | "dashboard"
+  | "wellnessAssessment"
   | "instructions"
   | "settings"
   | "conversation"
   | "conversationError"
-  | "positiveFeedback"
-  | "negativeFeedback"
   | "finalScreen"
   | "sessionEnded";
 
